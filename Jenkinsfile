@@ -10,12 +10,12 @@ spec:
   containers:
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["cat"]
+    command: ["sh", "-c", "cat"]
     tty: true
 
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
-    command: ["cat"]
+    command: ["sh", "-c", "cat"]
     tty: true
 """
     }
