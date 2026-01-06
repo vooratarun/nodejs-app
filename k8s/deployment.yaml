@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: default   # 👈 ADD THIS
   name: nodejs-app
 spec:
   replicas: 2

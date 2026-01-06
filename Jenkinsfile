@@ -77,7 +77,6 @@ EOF
             kubectl apply -f /tmp/deployment.yaml
             kubectl apply -f k8s/service.yaml
 
-            kubectl rollout status deployment/nodejs-app --timeout=60s
           '''
         }
       }
