@@ -63,24 +63,24 @@ EOF
       }
     }
 
-    stage('Deploy to EKS') {
-      steps {
-        container('kubectl') {
-          sh '''
-            set -e
+    // stage('Deploy to EKS') {
+    //   steps {
+    //     container('kubectl') {
+    //       sh '''
+    //         set -e
 
-            kubectl get nodes
+    //         kubectl get nodes
 
-            cp k8s/deployment.yaml /tmp/deployment.yaml
-            sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" /tmp/deployment.yaml
+    //         cp k8s/deployment.yaml /tmp/deployment.yaml
+    //         sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" /tmp/deployment.yaml
 
-            kubectl apply -f /tmp/deployment.yaml
-            kubectl apply -f k8s/service.yaml
+    //         kubectl apply -f /tmp/deployment.yaml
+    //         kubectl apply -f k8s/service.yaml
 
-            kubectl rollout status deployment/nodejs-app --timeout=60s
-          '''
-        }
-      }
-    }
+    //         kubectl rollout status deployment/nodejs-app --timeout=60s
+    //       '''
+    //     }
+    //   }
+    // }
   }
 }
