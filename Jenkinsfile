@@ -23,8 +23,8 @@ spec:
       mountPath: /var/run/docker.sock
 
   - name: aws
-    image: amazon/aws-cli:2
-    command: ['cat']
+    image: public.ecr.aws/aws-cli/aws-cli:latest
+    command: ["sh", "-c", "aws --version"]
     tty: true
 
   - name: kubectl
