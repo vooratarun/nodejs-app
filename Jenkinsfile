@@ -15,7 +15,7 @@ spec:
 
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
-    command: ["sh", "-c", "sleep infinity"]
+    tty: true
 """
     }
   }
