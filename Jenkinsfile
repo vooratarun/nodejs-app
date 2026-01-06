@@ -52,17 +52,24 @@ spec:
       }
     }
 
-    stage('Deploy to EKS') {
-      steps {
-        container('kubectl') {
-          sh '''
-            sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml
-            kubectl apply -f k8s/deployment.yaml
-            kubectl apply -f k8s/service.yaml
-          '''
-        }
-      }
+   stage('Deploy to EKS') {
+  steps {
+    container('kubectl') {
+      sh '''
+        set -x
+
+        kubectl version --client
+        kubectl get nodes
+
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+
+        echo "Deploy commands executed"
+      '''
     }
+  }
+}
+
   }
 
   post {
