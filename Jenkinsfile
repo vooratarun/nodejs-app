@@ -10,8 +10,12 @@ spec:
   containers:
     - name: kaniko
       image: gcr.io/kaniko-project/executor:latest
-      command: ["cat"]
-      tty: true
+      args:
+        - --dockerfile=Dockerfile
+        - --context=.
+        - --destination=745392035468.dkr.ecr.ap-south-1.amazonaws.com/nodejs-app:${BUILD_NUMBER}
+        - --cache=true
+        - --cache-dir=/cache
       volumeMounts:
         - name: kaniko-cache
           mountPath: /cache
@@ -28,14 +32,6 @@ spec:
     }
   }
 
-  environment {
-    AWS_REGION = "ap-south-1"
-    AWS_ACCOUNT_ID = "745392035468"
-    ECR_REPO = "nodejs-app"
-    IMAGE_TAG = "${BUILD_NUMBER}"
-    IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-  }
-
   stages {
 
     stage('Checkout') {
@@ -46,39 +42,19 @@ spec:
 
     stage('Build & Push Image (Kaniko)') {
       steps {
-        container('kaniko') {
-          sh """
-          /kaniko/executor \
-            --context \$(pwd) \
-            --dockerfile Dockerfile \
-            --destination ${IMAGE_URI} \
-            --cache=true \
-            --cache-dir=/cache
-          """
-        }
+        echo "Kaniko container already built & pushed the image"
       }
     }
 
     stage('Deploy to EKS') {
       steps {
         container('kubectl') {
-          sh """
-          sed -i 's|IMAGE_PLACEHOLDER|${IMAGE_URI}|g' k8s/deployment.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl apply -f k8s/ingress.yaml
-          """
+          sh '''
+            kubectl apply -f k8s/deployment.yaml
+            kubectl apply -f k8s/service.yaml
+          '''
         }
       }
-    }
-  }
-
-  post {
-    success {
-      echo "✅ Build & Deployment successful"
-    }
-    failure {
-      echo "❌ Build or Deployment failed"
     }
   }
 }
