@@ -6,39 +6,38 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
+  serviceAccountName: jenkins
   containers:
-  - name: node
-    image: node:18-alpine
-    command: ['cat']
-    tty: true
+    - name: node
+      image: node:18
+      command: ["cat"]
+      tty: true
 
-  - name: docker
-    image: docker:24
-    command: ['cat']
-    tty: true
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
+    - name: docker
+      image: docker:24
+      command: ["cat"]
+      tty: true
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
 
-  - name: aws
-    image: public.ecr.aws/aws-cli/aws-cli:latest
-    command: ["sh", "-c", "aws --version"]
-    tty: true
+    - name: kubectl
+      image: bitnami/kubectl:latest
+      command: ["cat"]
+      tty: true
 
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command: ['cat']
-    tty: true
+    - name: aws
+      image: public.ecr.aws/aws-cli/aws-cli:latest
+      command: ["cat"]
+      tty: true
 
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-"""
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+  """
     }
-  }
+}
 
   environment {
     AWS_REGION     = "ap-south-1"
