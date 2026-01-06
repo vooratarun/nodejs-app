@@ -52,23 +52,23 @@ spec:
       }
     }
 
-   stage('Deploy to EKS') {
-  steps {
-    container('kubectl') {
-      sh '''
-        set -x
+    stage('Deploy to EKS') {
+    steps {
+        container('kubectl') {
+        sh '''
+            set -x
 
-        kubectl version --client
-        kubectl get nodes
+            kubectl version --client
+            kubectl get nodes
 
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
+            kubectl apply -f k8s/deployment.yaml
+            kubectl apply -f k8s/service.yaml
 
-        echo "Deploy commands executed"
-      '''
+            echo "Deploy commands executed"
+        '''
+        }
     }
-  }
-}
+    }
 
   }
 
