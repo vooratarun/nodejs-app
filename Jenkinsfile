@@ -1,5 +1,4 @@
 pipeline {
-
   agent {
     kubernetes {
       yaml """
@@ -7,44 +6,34 @@ apiVersion: v1
 kind: Pod
 spec:
   serviceAccountName: jenkins
-  containers:
-    - name: node
-      image: node:18
-      command: ["cat"]
-      tty: true
 
-    - name: docker
-      image: docker:24
+  containers:
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:latest
       command: ["cat"]
       tty: true
       volumeMounts:
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
+        - name: kaniko-cache
+          mountPath: /cache
 
     - name: kubectl
       image: bitnami/kubectl:latest
       command: ["cat"]
       tty: true
 
-    - name: aws
-      image: public.ecr.aws/aws-cli/aws-cli:latest
-      command: ["cat"]
-      tty: true
-
   volumes:
-    - name: docker-sock
-      hostPath:
-        path: /var/run/docker.sock
-  """
+    - name: kaniko-cache
+      emptyDir: {}
+"""
     }
-}
+  }
 
   environment {
-    AWS_REGION     = "ap-south-1"
-    ECR_ACCOUNT_ID = "745392035468"
-    ECR_REPO       = "nodejs-app"
-    IMAGE_TAG      = "${BUILD_NUMBER}"
-    AWS_CREDS      = "aws-creds"
+    AWS_REGION = "ap-south-1"
+    AWS_ACCOUNT_ID = "745392035468"
+    ECR_REPO = "nodejs-app"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
   }
 
   stages {
@@ -55,70 +44,30 @@ spec:
       }
     }
 
-    stage('Install Dependencies') {
+    stage('Build & Push Image (Kaniko)') {
       steps {
-        container('node') {
-          sh 'npm install'
+        container('kaniko') {
+          sh """
+          /kaniko/executor \
+            --context \$(pwd) \
+            --dockerfile Dockerfile \
+            --destination ${IMAGE_URI} \
+            --cache=true \
+            --cache-dir=/cache
+          """
         }
       }
     }
 
-    stage('Build Docker Image') {
-      steps {
-        container('docker') {
-          sh 'docker build -t ${ECR_REPO}:${IMAGE_TAG} .'
-        }
-      }
-    }
-
-    stage('Login to ECR') {
-      steps {
-        container('aws') {
-          withCredentials([[
-            $class: 'AmazonWebServicesCredentialsBinding',
-            credentialsId: AWS_CREDS
-          ]]) {
-            sh '''
-              aws ecr get-login-password --region ${AWS_REGION} \
-              | docker login --username AWS \
-              --password-stdin ${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-            '''
-          }
-        }
-      }
-    }
-
-    stage('Push Image to ECR') {
-      steps {
-        container('docker') {
-          sh '''
-            docker tag ${ECR_REPO}:${IMAGE_TAG} \
-              ${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-
-            docker push \
-              ${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-          '''
-        }
-      }
-    }
-
-    stage('Update K8s Deployment Image') {
-      steps {
-        container('node') {
-          sh '''
-            sed -i "s|IMAGE_PLACEHOLDER|${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}|g" k8s/deployment.yaml
-          '''
-        }
-      }
-    }
-
-    stage('Deploy to Kubernetes') {
+    stage('Deploy to EKS') {
       steps {
         container('kubectl') {
-          sh '''
-            kubectl apply -f k8s/deployment.yaml
-            kubectl apply -f k8s/service.yaml
-          '''
+          sh """
+          sed -i 's|IMAGE_PLACEHOLDER|${IMAGE_URI}|g' k8s/deployment.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/ingress.yaml
+          """
         }
       }
     }
@@ -126,10 +75,10 @@ spec:
 
   post {
     success {
-      echo "✅ Deployment successful"
+      echo "✅ Build & Deployment successful"
     }
     failure {
-      echo "❌ Deployment failed"
+      echo "❌ Build or Deployment failed"
     }
   }
 }
