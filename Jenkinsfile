@@ -1,6 +1,7 @@
 pipeline {
   agent {
     kubernetes {
+      defaultContainer 'kubectl'
       yaml """
 apiVersion: v1
 kind: Pod
@@ -8,24 +9,24 @@ spec:
   serviceAccountName: jenkins
 
   containers:
-    - name: kaniko
-      image: gcr.io/kaniko-project/executor:debug
-      command: ["sh", "-c", "sleep infinity"]
-
     - name: kubectl
       image: bitnami/kubectl:latest
       command: ["cat"]
       tty: true
+
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:debug
+      command: ["sh", "-c", "sleep infinity"]
 """
     }
   }
 
   environment {
-    AWS_REGION    = "ap-south-1"
+    AWS_REGION = "ap-south-1"
     AWS_ACCOUNT_ID = "745392035468"
-    ECR_REPO      = "nodejs-app"
-    IMAGE_TAG     = "${BUILD_NUMBER}"
-    IMAGE_URI     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+    ECR_REPO = "nodejs-app"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
   }
 
   stages {
@@ -36,12 +37,10 @@ spec:
       }
     }
 
-    stage('Build & Push Image (Kaniko)') {
+    stage('Build & Push Image') {
       steps {
         container('kaniko') {
           sh '''
-            echo "Building image: ${IMAGE_URI}"
-
             /kaniko/executor \
               --dockerfile Dockerfile \
               --context $(pwd) \
@@ -53,31 +52,15 @@ spec:
     }
 
     stage('Deploy to EKS') {
-    steps {
-        container('kubectl') {
+      steps {
         sh '''
-            set -x
-
-            kubectl version --client
-            kubectl get nodes
-
-            kubectl apply -f k8s/deployment.yaml
-            kubectl apply -f k8s/service.yaml
-
-            echo "Deploy commands executed"
+          kubectl get nodes
+          sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl rollout status deployment/nodejs-app --timeout=60s
         '''
-        }
-    }
-    }
-
-  }
-
-  post {
-    success {
-      echo "✅ Build & Deployment successful"
-    }
-    failure {
-      echo "❌ Pipeline failed"
+      }
     }
   }
 }
