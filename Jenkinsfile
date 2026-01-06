@@ -53,11 +53,12 @@ spec:
 
     stage('Deploy to EKS') {
       steps {
-        sh '''
-          kubectl get nodes
-          sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+        container('kubectl') {
+          sh '''
+            kubectl get nodes
+            sed -i "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml
+            kubectl apply -f k8s/deployment.yaml
+            kubectl apply -f k8s/service.yaml
           kubectl rollout status deployment/nodejs-app --timeout=60s
         '''
       }
