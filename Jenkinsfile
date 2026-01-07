@@ -21,6 +21,10 @@ spec:
     }
   }
 
+  triggers {
+    githubPush()
+  }
+
   environment {
     AWS_REGION     = "ap-south-1"
     AWS_ACCOUNT_ID = "745392035468"
@@ -76,7 +80,6 @@ EOF
 
             kubectl apply -f /tmp/deployment.yaml
             kubectl apply -f k8s/service.yaml
-
           '''
         }
       }
